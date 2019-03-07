@@ -19,7 +19,7 @@ jQuery.noConflict();
             const pond = FilePond.create(inputElement);
             FilePond.setOptions({
                 allowMultiple: false,
-                instantUpload: false,
+                instantUpload: true,
                 maxFiles: 1,
                 maxFileSize: "5MB",   
 
@@ -30,6 +30,7 @@ jQuery.noConflict();
                         method: 'POST',
                         onload: (response) => {
                             response = JSON.parse(response);
+                            //highest_style_prob(response['max_style']);
                             create_plot(response['plot_img']);
                         }
                     },
@@ -46,6 +47,8 @@ jQuery.noConflict();
             });
 
 
+            // Create the plot containing the probability of each class
+            // Takes in a base64 string of img
             function create_plot(plot_img) {
                 if (!document.contains(document.getElementById("plot_img"))){
                     var img = document.createElement("img");
@@ -59,82 +62,20 @@ jQuery.noConflict();
                 $("#plot_img").attr("src", "data:image/png;base64," + plot_img);
             }
 
-            /*
-            // Create the sculpture_img if it doesn't exist
-            // Otherwise just get element
-            function get_img() {
-                // We'll need to create if it doesn't exist
-                if (document.contains(document.getElementById("sculpture_img"))) {
-                    // If already exists need to remove plot_img if exists
-                    if(document.contains(document.getElementById("plot_img"))) {
-                        elem = document.getElementById("plot_img");
-                        elem.parentNode.removeChild(elem);  
-                    }
 
-                    var img = document.getElementById("sculpture_img");
-                } else {
-                    var img = document.createElement("img");
-                    img.id = "sculpture_img";
-                    img.style.width = '250px';
-                    img.style.height = '350px';
-                    document.getElementById("sculpture_div").appendChild(img);
-                }
-
-                return img;
-            }
-
-
-            // Change the image when you choose a file
-            $("#fileButton").change(function(e) {
-                for (var i = 0; i < e.originalEvent.srcElement.files.length; i++) {
-                    var file = e.originalEvent.srcElement.files[i];
-
-                    img = get_img();
-                    img.src = URL.createObjectURL(file);
-                }
-            });
-
-
-
-            // Create the plot_img and display
-            function create_plot(response) {
-                if (!document.contains(document.getElementById("plot_img"))){
-                    var img = document.createElement("img");
-                    img.id = "plot_img";
-                    img.style.width = '600px';
-                    img.style.height = '450px';
-                    //img.style.paddingLeft = "50px";
-                    img.style.position = "relative";
-                    img.style.left = "100px";
-                    document.getElementById("sculpture_div").appendChild(img);
+            // Note which style has the highest probability for the image
+            // Create little message
+            function highest_style_prob(max_style) {
+                if (!document.contains(document.getElementById("likely_style"))){
+                    var par = document.createElement("p");
+                    var node = document.createTextNode("The model believes that the most likely style" +
+                                                       " of this sculpture is - " + max_style);
+                    par.appendChild(node);
+                    par.id = "likely_style";
+                    document.getElementById("plot_div").appendChild(par);
                 }
                 
-                // Display image
-                $("#plot_img").attr("src", "data:image/png;base64," + response['plot_img'])
             }
-
-            
-            // Submit the pic when click the form and receive the results plot
-            $('#file-form').on('submit',(function(e) {
-                e.preventDefault();
-                var formData = new FormData(this);
-
-                $.ajax({
-                    type:'POST',
-                    url: $(this).attr('action'),
-                    data:formData,
-                    cache:false,
-                    contentType: false,
-                    processData: false,
-                    success: function(response){
-                        create_plot(response);
-                    },
-                    error: function(response){
-                        console.log("error");
-                    }
-                });
-            }));
-            */
 
         });
 

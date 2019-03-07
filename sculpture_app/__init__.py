@@ -1,13 +1,13 @@
 import os
 from flask import Flask
 from .models import sculpture_model
-
+from . import secret
 
 def create_app(test_config=None):
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(
-        SECRET_KEY='dev',
+        SECRET_KEY=secret.SECRET_KEY,
         DATABASE=os.path.join(app.instance_path, 'sculpture_app.sqlite'),
     )
 
@@ -24,8 +24,13 @@ def create_app(test_config=None):
     except OSError:
         pass
 
-    from .routes import home
-    app.register_blueprint(home.bp)
-    home.load_model()
+    # Register pages
+    from .routes import views
+    app.register_blueprint(views.bp)
+
+    # Initially load the model
+    sculpture_model.load_model()
 
     return app
+
+

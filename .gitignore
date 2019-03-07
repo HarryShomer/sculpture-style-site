@@ -1,6 +1,7 @@
 venv/
 *.h5
 .idea/
+secret.py
 
 *.pyc
 __pycache__/

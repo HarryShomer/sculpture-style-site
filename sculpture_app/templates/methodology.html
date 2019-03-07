@@ -1,12 +1,125 @@
-<div>
-        <!--
-        <p style="margin-left: 22px; margin-right: 25px;">
-            This app is a tool made to predict the style of a sculpture given an image of it. As of right now the
-            model supports only 12 different sculpture styles (Note: The word 'style' is used a little loosely here. Some
-            are more correctly classified as periods or movements). Those styles include: Medieval, Baroque, Early
-            Renaissance, High Renaissance, Mannerism (Late Renaissance), Baroque, NeoClassicism, Rococo, Romanticism,
-            Impressionism, Realism, and Minimalism. For more details on the methodology please look here (include link!!).
-            The code for the project can be found here (include link).
-        </p>
-        -->
+{% extends "base.html" %}
+
+{% block content %}
+
+<!-- Header -->
+<div style="margin-left: 22px; margin-right: 25px;">
+    <h1> Methodology </h1>
+    <b>NOTE:</b> All the code used to create this model can be found 
+    <a href="https://github.com/HarryShomer/Sculpture-Period-Classification">here</a>. 
 </div>
+
+<br/>
+
+<!-- Data Section --> 
+<div style="margin-left: 22px; margin-right: 25px;">
+    <h3>Data</h3>
+
+    <p>
+        The data for this project was scraped from three different sources:
+        <ul> 
+            <li><a href="https://www.wikiart.org/en/">Wikiart</a></li>
+            <li><a href="https://www.wga.hu/">Web Gallery of Art</a></li>
+            <li><a href="https://www.nga.gov/">National Gallery of Art</a></li>
+        </ul>
+    </p>
+
+    <p>
+        From these sources we chose 12 different styles to train the model on. Those styles are:
+        <ul>
+          <li>Medieval</li>
+          <li>Early Renaissance</li>
+          <li>High Renaissance</li>
+          <li>Baroque</li>
+          <li>Mannerism (Late Renaissance)</li>
+          <li>Rococo</li>
+          <li>NeoClassicism</li>
+          <li>Romanticism</li>
+          <li>Realism</li>
+          <li>Impressionism</li>
+          <li>Minimalism</li>
+          <li>Surrealism</li>
+        </ul> 
+    </p>
+
+    <p> 
+        Each image was resized to 299x299. We then split this data into three different sets. A training, validation, and testing set. The split was 60/20/20. The number of images in each group is 2387 in the training set, 802 in the validation set, and 800 in the testing set. Due to class imbalance each style was itself split randomly by the above percentages and placed into the three groups. The number of images for each style and set can be found below:
+    </p>
+
+    <img src="/static/Style_Sets.png"/>  
+</div>
+
+<br/><br/>
+
+<!-- Training Process -->
+<div style="margin-left: 22px; margin-right: 25px;">
+    <h3>Model Training</h3>
+
+    <p>
+        In order to create the model, we chose to fine-tune the <a href="https://arxiv.org/abs/1610.02357">Xception</a>
+        model. Given the small amount of data at our disposal, we will use data augmentation techniques to increase the number of training images. This will allow us to have a bigger dataset and help us prevent overfitting. The strategy to augment the training data was done by producing images by randomly adjusting the shear range, randomly zooming in, and randomly flipping an image on its horizontal axis.
+    </p>
+
+    <p>
+        To begin we first replaced the top of the model, which used to classify the input into a set of discrete classes.
+        The diagram of this new classifier is shown below. It includes regularization to the tune of a .0075 L2 penalty in the dense layer and a 50% dropout layer. 
+    </p>
+
+    <img src="/static/new_cnn_top.png" />
+    <br/><br/>
+
+    <p> 
+        We first pre-trained the model by freezing every layer besides for those we just added. During this procedure the model was trained for 25 epochs with a batch size of 16. The optimizer used is RMSprop with a learning rate of .001. The plot below details the training and validation accuracy. 
+    </p>
+
+    <img src="/static/pretrain_acc_plot.png" />
+    <br/><br/>
+
+    <p> 
+        Now that the newly added top classifier’s weights are initialized we can now begin fine-tuning the model. The obvious question that comes to mind when doing so is how many layers do we fine-tune? Do we allow all of the weights in the network to be modified or only a portion? In order to determine this, a number of separate models are built each fine-tuning a different number of layers in the network. We will then evaluate each model and see which one performs best on the validation set. Each model begins with the same weights (which was just previously trained) and uses the same procedure. Which layers are allowed to be modified or not is determined by the block it is contained in. Of important note is the fact that the Xception module contains 14 blocks. The following models were built:
+        <ul> 
+            <li>The weights of the first 13 blocks were frozen</li>
+            <li>The weights of the first 11 blocks were frozen</li>
+            <li>The weights of the first 9 blocks were frozen</li>
+            <li>The weights of the first 7 blocks were frozen</li>
+            <li>The weights of the first 5 blocks were frozen</li>
+            <li>The weights of the first 3 blocks were frozen</li>
+        </ul>
+    </p>
+
+    <p>
+        Each sub-model was trained for 50 epochs with a batch size of 16. The optimizer used was Stochastic Gradient Descent with a learning rate of .0001 and a momentum of .9. After each epoch the current model was evaluated on the validation set. The results of both the accuracy and the loss on the validation set for each model is shown below (Note: Each model is referred to by the number of blocks frozen):  
+    </p>
+
+    <img src="/static/finetune_acc_plot.png" />
+    <br/><br/>
+    <img src="/static/finetune_loss_plot.png" />
+    <br/><br/>
+
+    <p> 
+        As you can see, the top few models each do fairly similair. Upon closer inspection I’ve determined that the ‘block3’ model performed best, this being the model with only the first three blocks frozen. For this reason this was chosen as my final model.
+    </p>
+</div>
+
+<br/>
+
+<!-- Evaluation -->
+<div style="margin-left: 22px; margin-right: 25px;">
+    <h3>Evaluation</h3>
+    <p>
+        We first evaluate it on the test set as a whole. Using our model and the test sculptures we look to see how well it does it predicting their correct classes. We find that following results: 
+        <ul>
+            <li> <b>Test Accuracy: 54.1%</b></li>
+            <li> <b>Test Loss: 1.62</b> </li>
+        </ul>
+    </p>
+
+    <p> 
+        A more detailed examination can be found by looking at a normalized confusion matrix as shown below. This shows us that the model has issues distinguishing certain styles from the rest - particularly Rococo, Mannerism, and Romanticism. 
+    </p>
+    <img src="/static/normalized_confusion_matrix.png" />
+</div>
+
+
+
+{% endblock %}
