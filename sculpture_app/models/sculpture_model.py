@@ -101,8 +101,7 @@ def create_model():
 
     # Turn into model & load the weights
     sculpt_cnn = models.Model(inputs=base_model.input, outputs=predictions)
-    sculpt_cnn.load_weights(os.path.join(os.path.dirname(os.path.realpath(__file__)), 
-                            "xception_finetune_12_reg_75_block4.h5"))
+    sculpt_cnn.load_weights(os.path.join(os.path.dirname(os.path.realpath(__file__)), "xception_finetune_12_reg_75_block4.h5"))
     print("-> The CNN has been fully loaded")
 
     return sculpt_cnn

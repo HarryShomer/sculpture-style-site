@@ -56,12 +56,11 @@
     <h3>Model Training</h3>
 
     <p>
-        In order to create the model, we chose to fine-tune the <a href="https://arxiv.org/abs/1610.02357">Xception</a>
-        model. Given the small amount of data at our disposal, we will use data augmentation techniques to increase the diversity of training images. This will hopefully help us prevent overfitting. The strategy to augment the training data was done by producing images by randomly adjusting the shear range, randomly zooming in, and randomly flipping an image on its horizontal axis.
+        In order to create the model, we chose to fine-tune the <a href="https://arxiv.org/abs/1610.02357">Xception</a> model. Given the small amount of data at our disposal, we will use data augmentation techniques to increase the diversity of training images. This will hopefully help us prevent overfitting. The strategy to augment the training data was done by producing images by randomly adjusting the shear range, randomly zooming in, and randomly flipping an image on its horizontal axis.
     </p>
 
     <p>
-        To begin we first replaced the top of the model, which used to classify the input into a set of discrete classes.
+        To begin we first replaced the top of the network, which used to classify the input into a set of discrete classes.
         The diagram of this new classifier is shown below. It includes regularization to the tune of a .0075 L2 penalty in the dense layer and a 50% dropout layer. 
     </p>
 
@@ -69,14 +68,14 @@
     <br/><br/>
 
     <p> 
-        We first pre-trained the model by freezing every layer besides for those we just added. During this procedure the model was trained for 25 epochs with a batch size of 16. The optimizer used is RMSprop with a learning rate of .001. The plot below details the training and validation accuracy. 
+        We first pre-trained the network by freezing every layer besides for those we just added. During this procedure the network was trained for 25 epochs with a batch size of 16. The optimizer used is RMSprop with a learning rate of .001. The plot below details the training and validation accuracy. 
     </p>
 
     <img src="/static/pretrain_acc_plot.png" />
     <br/><br/>
 
     <p> 
-        Now that the newly added top classifier’s weights are initialized we can now begin fine-tuning the model. The obvious question that comes to mind when doing so is how many layers do we fine-tune? Do we allow all of the weights in the network to be modified or only a portion? In order to determine this, a number of separate models are built each fine-tuning a different number of layers in the network. We will then evaluate each model and see which one performs best on the validation set. Each model begins with the same weights (which was just previously trained) and uses the same procedure. Which layers are allowed to be modified or not is determined by the block it is contained in. Of important note is the fact that the Xception module contains 14 blocks. The following models were built:
+        Now that the newly added top classifier’s weights are initialized we can now begin fine-tuning the network. The obvious question that comes to mind when doing so is how many layers do we fine-tune? Do we allow all of the weights in the network to be modified or only a portion? In order to determine this, a number of separate models are built each fine-tuning a different number of layers in the network. We will then evaluate each model and see which one performs best on the validation set. Each model begins with the same weights (which was just previously trained) and uses the same procedure. Which layers are allowed to be modified or not is determined by the block it is contained in. Of important note is the fact that the Xception module contains 14 blocks. The following models were built:
         <ul> 
             <li>The weights of the first 13 blocks were frozen</li>
             <li>The weights of the first 11 blocks were frozen</li>
@@ -120,6 +119,152 @@
     <img src="/static/normalized_confusion_matrix.png" />
 </div>
 
+
+<br/>
+
+<!-- Update -->
+<div style="margin-left: 22px; margin-right: 25px;">
+    <h2>Update - 01/21/2020</h2>
+    <p> 
+        I recently talked to someone who asked me how I handled the issue of an imbalanced dataset for this task and I told them that besides for ensuring the same percentage of images for each class across each set I didn't do anything. At the time I figured I wouldn't bother and would just maximize the total accuracy/loss. But I figured that due to the very low accuracy among some classes, I may as well see what I could do and how it would effect the classifier.
+    </p>
+
+    <p>
+        In order to do so I computed the balanced class weights for the dataset. The method for doing so can be found 
+        <a href="https://scikit-learn.org/stable/modules/generated/sklearn.utils.class_weight.compute_class_weight.html">here</a>. What this does is weight instances of classes with lesser training data as counting more towards the loss function and those with more training data as counting less. This is as oppossed to earlier where each data point was worth the same, causing those classes with more data to factor more into the loss function. One can really choose whatever weights one wants but here I chose to make them balanced. This means that the weighted sum of the instances for each class is the same - so each has the same total effect on the loss function. 
+    </p>
+
+    <p>
+        I now did the training process again, with the class weights being the only difference from before. Because the whole training process can take some time I choose to use the same hyperparameters as before and to fine-tune the same amount of blocks. This means I first pre-trained the network as before and then fine-tuned the resulting network with the only the first 3 block frozen (which originally performed the best). Here is the comparison of the accuracy and loss by epoch for the original final model and the new weighted model:
+    </p>
+    
+    <img src="/static/finetune_compare_acc.png" />
+    <br/><br/>
+    <img src="/static/finetune_compare_loss.png" />
+    <br/><br/>
+
+    <p>
+        It's easy to see that it just doesn't do close to as well. When testing the network on the test set we get an accuracy of 47.64% that is about a ~6.5% drop from the original model. I don't think this should be unexpected. We'll now take a look at the normalized confusion matrix to see how well the weighted classifier does across classes. As a reminder, the weakness with the previous iteration was that some classes like Rococo and Romanticism performed very poorly due to being similar to other styles and having a small sample size. By weighting each class equally they should now perform better.
+    </p>
+
+    <br/>
+    <img src="/static/balanced_heatmap.png" />
+    <br/>
+    <br/>
+
+    <p> 
+        And this is what we see. Looking at the accuracy for each class we see a big jump for classes that struggled in the previous iteration - Romanticism, Rococo, and Mannerism. We also see big decreases for the two classes with the most data - Baroque and Early Renaissance. Lastly, there is a much lower overall false positive rate. This can be seen clearly with Baroque. The accuracy for both networks and the difference between them can be seen below:
+    </p>
+
+    <br/>
+
+    <table border="1" style="width:60%">
+        <tr>
+            <th>Style</th>
+            <th>Non-Weighted Accuracy%</th>
+            <th>Weighted Accuracy%</th>
+            <th>% Difference</th>
+        </tr>
+
+        <tr>
+            <td>Baroque</td>
+            <td>61%</td>
+            <td>30%</td>
+            <td>-31%</td>
+        </tr>
+
+        <tr>
+            <td>Early Renaissance</td>
+            <td>53%</td>
+            <td>39%</td>
+            <td>-24%</td>
+        </tr>
+
+        <tr>
+            <td>High Renaissance</td>
+            <td>20%</td>
+            <td>29%</td>
+            <td>+9%</td>
+        </tr>
+
+        <tr>
+            <td>Impressionism</td>
+            <td>64%</td>
+            <td>54%</td>
+            <td>-10%</td>
+        </tr>
+
+
+        <tr>
+            <td>Mannerism</td>
+            <td>12%</td>
+            <td>29%</td>
+            <td>+17%</td>
+          </tr>
+
+
+        <tr>
+            <td>Medieval</td>
+            <td>78%</td>
+            <td>83%</td>
+            <td>+5%</td>
+        </tr>
+
+        <tr>
+            <td>Minimalism</td>
+            <td>90%</td>
+            <td>89%</td>
+            <td>-1%</td>
+        </tr>
+
+        <tr>
+            <td>NeoClassicism</td>
+            <td>57%</td>
+            <td>47%</td>
+            <td>-10%</td>
+        </tr>
+
+
+        <tr>
+            <td>Realism</td>
+            <td>56%</td>
+            <td>48%</td>
+            <td>-8%</td>
+        </tr>
+
+
+        <tr>
+            <td>Rococo</td>
+            <td>7%</td>
+            <td>30%</td>
+            <td>+22%</td>
+        </tr>
+
+
+        <tr>
+            <td>Romanticism</td>
+            <td>15%</td>
+            <td>35%</td>
+            <td>+20%</td>
+        </tr>
+
+
+        <tr>
+            <td>Surrealism</td>
+            <td>62%</td>
+            <td>66%</td>
+            <td>+4%</td>
+        </tr>
+
+    </table> 
+
+
+    <br/>
+    <p>
+        To conclude I this this exercise turned out like we thought it would. Adding class weights resulted in a lower overall accuracy while making the accuracy between classes more balanced. I'd argue this small change makes the network more viable in a real world setting. More work tweaking the hyperparameters and fine-tuning different blocks would likely lessen the gap between the two networks. 
+    </p>
+
+</div>
 
 
 {% endblock %}
